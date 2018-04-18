@@ -2,6 +2,7 @@
 # -_- coding:utf-8 -_-
 
 import json
+import operator
 import nltk
 import jieba.posseg
 
@@ -46,8 +47,21 @@ class ParallelCorpus:
             rest = word[:idx] + word[min(idx+1, len(word)):]
         return {'rest_of_phrase': rest}, data[3]
 
+    @classmethod
+    def feature_adjacent(cls, data, key):
+        result = cls.feature_simplecut(data, key)[0]
+        pairlist = jieba.posseg.lcut(data[0])
+        wordlist = list(map(operator.attrgetter('word'), pairlist))
+        flaglist = list(map(operator.attrgetter('flag'), pairlist))
+        idx = wordlist.index(data[2])
+        result['previous'] = flaglist[idx-1]
+        result['next'] = flaglist[idx+1]
+        result['previous_word'] = wordlist[idx-1]
+        result['next_word'] = wordlist[idx+1]
+        return result, data[3]
+
     def verb_group(self):
-        featureset = [self.feature_simplecut(data, self.keyword)
+        featureset = [self.feature_adjacent(data, self.keyword)
                       for data in json.load(open('tagged.json'))]
         trainset, testset = featureset, featureset[50:]
         classifier = nltk.NaiveBayesClassifier.train(trainset)
